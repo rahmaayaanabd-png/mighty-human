@@ -1,0 +1,70 @@
+// Prisma schema for mighty-human
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  headline     String?
+  bio          String?
+  industry     String?
+  currentRole  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  posts Post[]
+}
+
+enum PostType {
+  EXPERIENCE
+  RESOURCE
+}
+
+enum ResourceKind {
+  ARTICLE
+  VIDEO
+  PODCAST
+  TOOL
+  OTHER
+}
+
+// Where a resource came from. Only USER_SUBMITTED is populated for now;
+// EXTERNAL is reserved for a future ingestion job (RSS/YouTube/etc.).
+enum ResourceSource {
+  USER_SUBMITTED
+  EXTERNAL
+}
+
+model Post {
+  id       String   @id @default(cuid())
+  authorId String
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  type     PostType
+  title    String
+  body     String
+  industry String
+
+  // Per-post signal from the author, not a blanket account setting.
+  openToChat Boolean @default(false)
+
+  resourceUrl  String?
+  resourceKind ResourceKind?
+  source       ResourceSource @default(USER_SUBMITTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([industry])
+  @@index([type])
+  @@index([authorId])
+}
