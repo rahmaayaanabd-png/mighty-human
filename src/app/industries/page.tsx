@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PostCard } from "@/components/post-card";
+import { ExternalResourceCard } from "@/components/external-resource-card";
+import { ensureIndustryResourcesFresh } from "@/lib/external-resources";
 import { INDUSTRIES } from "@/lib/industries";
 
 export default async function IndustriesPage({
@@ -14,13 +16,23 @@ export default async function IndustriesPage({
       ? industry
       : undefined;
 
-  const resources = selected
-    ? await prisma.post.findMany({
-        where: { type: "RESOURCE", industry: selected },
-        orderBy: { createdAt: "desc" },
-        include: { author: { select: { id: true, name: true } } },
-      })
-    : [];
+  if (selected) {
+    await ensureIndustryResourcesFresh(selected);
+  }
+
+  const [communityResources, externalResources] = selected
+    ? await Promise.all([
+        prisma.post.findMany({
+          where: { type: "RESOURCE", industry: selected },
+          orderBy: { createdAt: "desc" },
+          include: { author: { select: { id: true, name: true } } },
+        }),
+        prisma.externalResource.findMany({
+          where: { industry: selected },
+          orderBy: { createdAt: "desc" },
+        }),
+      ])
+    : [[], []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,20 +64,38 @@ export default async function IndustriesPage({
         <p className="text-sm text-black/60 dark:text-white/60">
           Pick an industry above to see resources people have shared.
         </p>
-      ) : resources.length === 0 ? (
-        <p className="text-sm text-black/60 dark:text-white/60">
-          No resources shared for {selected} yet. Be the first to{" "}
-          <Link href="/posts/new" className="underline">
-            share one
-          </Link>
-          .
-        </p>
       ) : (
-        <div className="flex flex-col gap-4">
-          {resources.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
+        <>
+          <section className="flex flex-col gap-4">
+            <h2 className="text-lg font-semibold">Shared by the community</h2>
+            {communityResources.length === 0 ? (
+              <p className="text-sm text-black/60 dark:text-white/60">
+                No resources shared for {selected} yet. Be the first to{" "}
+                <Link href="/posts/new" className="underline">
+                  share one
+                </Link>
+                .
+              </p>
+            ) : (
+              communityResources.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))
+            )}
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-lg font-semibold">From around the web</h2>
+            {externalResources.length === 0 ? (
+              <p className="text-sm text-black/60 dark:text-white/60">
+                No external resources found for {selected} yet.
+              </p>
+            ) : (
+              externalResources.map((resource) => (
+                <ExternalResourceCard key={resource.id} resource={resource} />
+              ))
+            )}
+          </section>
+        </>
       )}
     </div>
   );

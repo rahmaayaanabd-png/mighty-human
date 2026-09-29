@@ -38,13 +38,6 @@ enum ResourceKind {
   OTHER
 }
 
-// Where a resource came from. Only USER_SUBMITTED is populated for now;
-// EXTERNAL is reserved for a future ingestion job (RSS/YouTube/etc.).
-enum ResourceSource {
-  USER_SUBMITTED
-  EXTERNAL
-}
-
 model Post {
   id       String   @id @default(cuid())
   authorId String
@@ -59,7 +52,6 @@ model Post {
 
   resourceUrl  String?
   resourceKind ResourceKind?
-  source       ResourceSource @default(USER_SUBMITTED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -67,4 +59,26 @@ model Post {
   @@index([industry])
   @@index([type])
   @@index([authorId])
+}
+
+// Resources pulled in from external search/video APIs for a given industry.
+// Kept separate from Post since these have no local author or "open to chat".
+model ExternalResource {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  url          String       @unique
+  industry     String
+  resourceKind ResourceKind
+  sourceName   String
+  createdAt    DateTime     @default(now())
+
+  @@index([industry])
+}
+
+// Tracks the last time we fetched external resources for an industry,
+// so we only hit the search/video APIs periodically instead of per view.
+model IndustryFetchCache {
+  industry      String   @id
+  lastFetchedAt DateTime
 }

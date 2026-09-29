@@ -29,6 +29,16 @@ Swap `DATABASE_URL` in `.env` to a Postgres connection string, change the `datas
 
 - **Accounts** — sign up / log in with email + password, edit your profile (headline, current role, industry, bio).
 - **Posts** — share an experience or a resource (article, video, podcast, tool, etc.) tagged to an industry, with an optional "open to chat" flag so others know they can reach out.
-- **Industries** — filter resources by industry to find what others have shared for that field.
+- **Industries** — filter resources by industry to see what the community has shared, plus articles and videos pulled in automatically from Google Custom Search and YouTube.
 
-Resources are user-submitted for now. The `Post.source` field (`USER_SUBMITTED` / `EXTERNAL`) is there so a future ingestion job (RSS, YouTube, etc.) can add external resources without a schema change.
+### External resources
+
+Picking an industry triggers a background fetch (cached for 24h per industry, tracked in `IndustryFetchCache`) that pulls articles via Google's Custom Search JSON API and videos via the YouTube Data API, storing results in `ExternalResource`. Without API keys configured, this section is simply empty — nothing breaks.
+
+To enable it, add to `.env`:
+
+```
+GOOGLE_API_KEY=""   # Google Cloud API key with Custom Search API + YouTube Data API v3 enabled
+GOOGLE_CSE_ID=""    # Programmable Search Engine ID (cx) - create one at programmablesearchengine.google.com, set it to "search the entire web"
+YOUTUBE_API_KEY=""  # optional, defaults to GOOGLE_API_KEY if unset
+```
